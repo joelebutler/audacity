@@ -16,13 +16,13 @@ Item {
     TrackRulerModel {
         id: rulerModel
 
-        height: initialized ? root.height : 0
+        height: root.height
 
-        trackId: initialized ? model.trackId : -1
-        isStereo: initialized ? model.isStereo : false
+        trackId: model.trackId
+        isStereo: model.isStereo
 
-        isCollapsed: initialized ? root.isCollapsed : false
-        channelHeightRatio: initialized ? root.channelHeightRatio : 1.0
+        isCollapsed: root.isCollapsed
+        channelHeightRatio: root.channelHeightRatio
     }
     MouseArea {
         anchors.fill: parent
