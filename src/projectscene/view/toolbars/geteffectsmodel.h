@@ -48,7 +48,6 @@ signals:
 private:
     void setIsLoading(bool loading);
     void setHasError(bool error);
-    static std::string toPhraseCaseLocale(const std::string& input, const std::locale& loc = std::locale {});
 
     struct EffectData {
         QString iconUrl;

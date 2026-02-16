@@ -26,7 +26,7 @@ void GetEffectsModel::load()
 
             for (const auto& group : groups) {
                 EffectsGroupData groupData;
-                groupData.title = QString::fromStdString(toPhraseCaseLocale(group.title));
+                groupData.title = QString::fromStdString(group.title);
                 for (const auto& effect : group.effects) {
                     EffectData effectData;
                     effectData.iconUrl = QString::fromStdString(effect.iconUrl);
@@ -141,21 +141,4 @@ void GetEffectsModel::setHasError(bool error)
     }
     m_hasError = error;
     emit hasErrorChanged();
-}
-
-std::string GetEffectsModel::toPhraseCaseLocale(const std::string& input, const std::locale& loc)
-{
-    if (input.empty()) {
-        return {};
-    }
-
-    std::string result(input);
-
-    for (char& c : result) {
-        c = std::tolower(c, loc);
-    }
-
-    result.front() = std::toupper(result.front(), loc);
-
-    return result;
 }
