@@ -85,6 +85,8 @@ Item {
                 readonly property real rowHeight: 48
                 readonly property real columnSpacing: 44
 
+                readonly property int cellHeight: rowHeight + spacing
+
                 ScrollBar.vertical: StyledScrollBar {
                     parent: root
 
