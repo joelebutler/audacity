@@ -33,6 +33,7 @@ void TrackRulerModel::init()
     if (!m_model) {
         m_model = buildRulerModel();
     }
+
     m_model->setDbRange(au::playback::PlaybackMeterDbRange::toDouble(configuration()->playbackMeterDbRange()));
     configuration()->playbackMeterDbRangeChanged().onNotify(this, [this]() {
         m_model->setDbRange(au::playback::PlaybackMeterDbRange::toDouble(configuration()->playbackMeterDbRange()));
@@ -62,7 +63,6 @@ void TrackRulerModel::init()
         emit fullStepsChanged();
         emit smallStepsChanged();
     }, muse::async::Asyncable::Mode::SetReplace);
-    setInitialized(true);
 }
 
 std::vector<QVariantMap> TrackRulerModel::fullSteps() const
@@ -137,8 +137,13 @@ bool TrackRulerModel::isCollapsed() const
 
 void TrackRulerModel::setIsCollapsed(bool isCollapsed)
 {
-    if (m_isCollapsed != isCollapsed) {
-        m_isCollapsed = isCollapsed;
+    if (m_isCollapsed == isCollapsed) {
+        return;
+    }
+
+    m_isCollapsed = isCollapsed;
+
+    if (m_model) {
         m_model->setCollapsed(isCollapsed);
         emit fullStepsChanged();
         emit smallStepsChanged();
@@ -152,8 +157,13 @@ int TrackRulerModel::height() const
 
 void TrackRulerModel::setHeight(int height)
 {
-    if (m_height != height) {
-        m_height = height;
+    if (m_height == height) {
+        return;
+    }
+
+    m_height = height;
+
+    if (m_model) {
         m_model->setHeight(height);
         emit fullStepsChanged();
         emit smallStepsChanged();
@@ -176,11 +186,13 @@ double TrackRulerModel::channelHeightRatio() const
 
 void TrackRulerModel::setChannelHeightRatio(double channelHeightRatio)
 {
-    if (!m_model) {
+    if (m_channelHeightRatio == channelHeightRatio) {
         return;
     }
-    if (m_channelHeightRatio != channelHeightRatio) {
-        m_channelHeightRatio = channelHeightRatio;
+
+    m_channelHeightRatio = channelHeightRatio;
+
+    if (m_model) {
         m_model->setChannelHeightRatio(channelHeightRatio);
         emit fullStepsChanged();
         emit smallStepsChanged();
@@ -396,18 +408,4 @@ void TrackRulerModel::setTrackId(const trackedit::TrackId& newTrackId)
 au::trackedit::TrackId TrackRulerModel::trackId() const
 {
     return m_trackId;
-}
-
-bool TrackRulerModel::initialized() const
-{
-    return m_initialized;
-}
-
-void TrackRulerModel::setInitialized(bool newInitialized)
-{
-    if (m_initialized == newInitialized) {
-        return;
-    }
-    m_initialized = newInitialized;
-    emit initializedChanged();
 }
