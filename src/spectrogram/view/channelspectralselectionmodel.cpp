@@ -6,6 +6,8 @@
 #include "internal/spectrogramutils.h"
 
 #include "framework/global/types/number.h"
+#include "framework/global/log.h"
+#include <qtmetamacros.h>
 
 namespace au::spectrogram {
 ChannelSpectralSelectionModel::ChannelSpectralSelectionModel(QObject* parent)
@@ -47,6 +49,16 @@ void ChannelSpectralSelectionModel::setTrackId(int id)
     emit selectionRangeChanged();
 }
 
+void ChannelSpectralSelectionModel::setChannel(int channel)
+{
+    if (m_channel == channel) {
+        return;
+    }
+    m_channel = channel;
+    emit channelChanged();
+    emit selectionRangeChanged();
+}
+
 void ChannelSpectralSelectionModel::setChannelHeight(double height)
 {
     if (muse::is_equal(m_channelHeight, height)) {
@@ -75,6 +87,24 @@ void ChannelSpectralSelectionModel::setSelectionEndFrequency(double freq)
     m_selectionEndFrequency = freq;
     emit selectionEndFrequencyChanged();
     emit selectionRangeChanged();
+}
+
+void ChannelSpectralSelectionModel::setSelectionStartTime(double time)
+{
+    if (muse::is_equal(m_selectionStartTime, time)) {
+        return;
+    }
+    m_selectionStartTime = time;
+    emit selectionStartTimeChanged();
+}
+
+void ChannelSpectralSelectionModel::setSelectionEndTime(double time)
+{
+    if (muse::is_equal(m_selectionEndTime, time)) {
+        return;
+    }
+    m_selectionEndTime = time;
+    emit selectionEndTimeChanged();
 }
 
 double ChannelSpectralSelectionModel::selectionY() const
@@ -109,5 +139,32 @@ std::pair<double, double> ChannelSpectralSelectionModel::selectionYRange() const
     }
 
     return { y1, y2 - y1 };
+}
+
+void ChannelSpectralSelectionModel::startCenterFrequencyDrag()
+{
+    m_peakFinder = peakFinderFactory()->newInstance(m_trackId, m_channel, m_selectionStartTime, m_selectionEndTime);
+    emit verticalDragActiveChanged();
+}
+
+void ChannelSpectralSelectionModel::dragCenterFrequency(double y)
+{
+    if (!m_peakFinder) {
+        return;
+    }
+
+    const double frequency = positionToFrequency(y);
+    if (frequency == SelectionInfo::UndefinedFrequency) {
+        return;
+    }
+
+    const double peakFrequency = m_peakFinder->findPeak(frequency);
+    emit centerFrequencyChangeRequested(peakFrequency);
+}
+
+void ChannelSpectralSelectionModel::endCenterFrequencyDrag()
+{
+    m_peakFinder.reset();
+    emit verticalDragActiveChanged();
 }
 }

@@ -603,6 +603,8 @@ TrackItemsContainer {
                 selectionEndPosition: root.context.selectionEndPosition
                 selectionStartFrequency: root.selectionStartFrequency
                 selectionEndFrequency: root.selectionEndFrequency
+                selectionStartTime: root.context.selectionStartTime
+                selectionEndTime: root.context.selectionEndTime
                 channelHeightRatio: channelSplitter.channelHeightRatio
                 isStereo: clipsModel.isStereo
                 selectionController: root.selectionController
@@ -612,6 +614,10 @@ TrackItemsContainer {
                     if (completed) {
                         root.seekToX(x1)
                     }
+                }
+
+                onVerticalDragActiveChanged: {
+                    root.verticalSelectionEditInProgress = verticalDragActive
                 }
             }
 

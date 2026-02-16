@@ -5,6 +5,7 @@
 
 #include "ispectrogramservice.h"
 #include "spectrogramtypes.h" // SelectionInfo
+#include "internal/ipeakfinderfactory.h"
 
 #include "framework/global/modularity/ioc.h"
 
@@ -18,6 +19,7 @@ class ChannelSpectralSelectionModel : public QObject, public muse::Injectable
     Q_OBJECT
 
     Q_PROPERTY(int trackId READ trackId WRITE setTrackId NOTIFY trackIdChanged FINAL)
+    Q_PROPERTY(int channel READ channel WRITE setChannel NOTIFY channelChanged FINAL)
 
     // Input
     Q_PROPERTY(double trackSampleRate READ trackSampleRate WRITE setTrackSampleRate NOTIFY trackSampleRateChanged FINAL)
@@ -26,12 +28,16 @@ class ChannelSpectralSelectionModel : public QObject, public muse::Injectable
         double selectionStartFrequency READ selectionStartFrequency WRITE setSelectionStartFrequency NOTIFY selectionStartFrequencyChanged FINAL)
     Q_PROPERTY(
         double selectionEndFrequency READ selectionEndFrequency WRITE setSelectionEndFrequency NOTIFY selectionEndFrequencyChanged FINAL)
+    Q_PROPERTY(double selectionStartTime READ selectionStartTime WRITE setSelectionStartTime NOTIFY selectionStartTimeChanged FINAL)
+    Q_PROPERTY(double selectionEndTime READ selectionEndTime WRITE setSelectionEndTime NOTIFY selectionEndTimeChanged FINAL)
 
     // Output
     Q_PROPERTY(double selectionY READ selectionY NOTIFY selectionRangeChanged FINAL)
     Q_PROPERTY(double selectionHeight READ selectionHeight NOTIFY selectionRangeChanged FINAL)
+    Q_PROPERTY(bool verticalDragActive READ verticalDragActive NOTIFY verticalDragActiveChanged FINAL)
 
     muse::Inject<spectrogram::ISpectrogramService> spectrogramService { this };
+    muse::Inject<spectrogram::IPeakFinderFactory> peakFinderFactory { this };
 
 public:
     ChannelSpectralSelectionModel(QObject* parent = nullptr);
@@ -45,6 +51,9 @@ public:
     int trackId() const { return m_trackId; }
     void setTrackId(int id);
 
+    int channel() const { return m_channel; }
+    void setChannel(int channel);
+
     double channelHeight() const { return m_channelHeight; }
     void setChannelHeight(double height);
 
@@ -57,22 +66,43 @@ public:
     double selectionY() const;
     double selectionHeight() const;
 
+    double selectionStartTime() const { return m_selectionStartTime; }
+    void setSelectionStartTime(double time);
+
+    double selectionEndTime() const { return m_selectionEndTime; }
+    void setSelectionEndTime(double time);
+
+    bool verticalDragActive() const { return m_peakFinder != nullptr; }
+
+    Q_INVOKABLE void startCenterFrequencyDrag();
+    Q_INVOKABLE void dragCenterFrequency(double y);
+    Q_INVOKABLE void endCenterFrequencyDrag();
+
 signals:
     void trackSampleRateChanged();
     void zoomChanged();
     void channelHeightChanged();
     void trackIdChanged();
+    void channelChanged();
     void selectionStartFrequencyChanged();
     void selectionEndFrequencyChanged();
     void selectionRangeChanged();
+    void verticalDragActiveChanged();
+    void selectionStartTimeChanged();
+    void selectionEndTimeChanged();
+    void centerFrequencyChangeRequested(double frequency);
 
 private:
     std::pair<double, double> selectionYRange() const;
 
     double m_trackSampleRate = 0.0;
     int m_trackId = -1;
+    int m_channel = -1;
     double m_channelHeight = 0.0;
     double m_selectionStartFrequency = SelectionInfo::UndefinedFrequency;
     double m_selectionEndFrequency = SelectionInfo::UndefinedFrequency;
+    double m_selectionStartTime = 0.0;
+    double m_selectionEndTime = 0.0;
+    std::unique_ptr<IPeakFinder> m_peakFinder;
 };
 }

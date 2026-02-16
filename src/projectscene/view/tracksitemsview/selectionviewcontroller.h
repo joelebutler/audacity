@@ -63,6 +63,10 @@ public:
     Q_INVOKABLE void startSelectionVerticalResize(spectrogram::SpectrogramHit hit);
     Q_INVOKABLE void updateSelectionVerticalResize(double y1, double y2, bool completed);
 
+    Q_INVOKABLE void startFrequencySelectionDrag();
+    Q_INVOKABLE void dragFrequencySelectionCenterFrequency(double frequency);
+    Q_INVOKABLE void endFrequencySelectionDrag();
+
     Q_INVOKABLE void selectTrackAudioData(double y);
     Q_INVOKABLE void selectItemData(const TrackItemKey& key);
 
@@ -122,5 +126,6 @@ private:
     bool isInExtendedSpectrogram(const spectrogram::SpectrogramHit& hit, double y) const;
 
     std::optional<const spectrogram::SpectrogramHit> m_spectrogramHit;
+    spectrogram::FrequencySelection m_dragStartFrequencySelection;
 };
 }

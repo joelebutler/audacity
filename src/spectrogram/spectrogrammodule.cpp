@@ -3,6 +3,7 @@
 #include "internal/globalspectrogramconfiguration.h"
 #include "internal/spectrogramservice.h"
 #include "internal/au3/au3spectrogrampainter.h"
+#include "internal/au3/au3peakfinderfactory.h"
 
 #include "view/abstractspectrogramsettingsmodel.h"
 #include "view/algorithmsectionparameterlistmodel.h"
@@ -42,6 +43,7 @@ void SpectrogramModule::registerExports()
     ioc()->registerExport<IGlobalSpectrogramConfiguration>(moduleName(), m_configuration);
     ioc()->registerExport<ISpectrogramPainter>(moduleName(), m_au3SpectrogramPainter);
     ioc()->registerExport<ISpectrogramService>(moduleName(), m_spectrogramService);
+    ioc()->registerExport<IPeakFinderFactory>(moduleName(), new Au3PeakFinderFactory(iocContext()));
 }
 
 void SpectrogramModule::registerUiTypes()

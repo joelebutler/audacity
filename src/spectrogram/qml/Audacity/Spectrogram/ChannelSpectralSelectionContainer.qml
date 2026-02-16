@@ -13,7 +13,11 @@ Item {
     required property real selectionEndPosition
     required property real selectionStartFrequency
     required property real selectionEndFrequency
+    required property real selectionStartTime
+    required property real selectionEndTime
     required property var selectionController
+
+    property alias verticalDragActive: selectionModel.verticalDragActive
 
     signal selectionHorizontalResize(real startPosition, real endPosition, bool completed)
 
@@ -78,15 +82,22 @@ Item {
 
         trackId: root.trackId
         trackSampleRate: root.trackSampleRate
+        channel: root.channel
         channelHeight: root.height
         selectionStartFrequency: root.selectionStartFrequency
         selectionEndFrequency: root.selectionEndFrequency
+        selectionStartTime: root.selectionStartTime
+        selectionEndTime: root.selectionEndTime
+
+        onCenterFrequencyChangeRequested: function (frequency) {
+            selectionController.dragFrequencySelectionCenterFrequency(frequency)
+        }
     }
 
     MouseArea {
         anchors.fill: parent
 
-        visible: pressed || !prv.selectionIsEmpty
+        visible: !selectionModel.verticalDragActive && (pressed || !prv.selectionIsEmpty)
 
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton
@@ -172,6 +183,14 @@ Item {
         }
     }
 
+    MouseArea {
+        // To make sure that the cursor stays as SizeVerCursor during vertical drag even when the mouse is outside of the centerFrequencyMouseArea
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.NoButton
+        cursorShape: selectionModel.verticalDragActive ? Qt.SizeVerCursor : Qt.ArrowCursor
+    }
+
     MarqueeSelection {
         id: marquee
 
@@ -185,13 +204,71 @@ Item {
         lineWidth: 1
         color: "white"
 
-        Rectangle {
+        Item {
+            id: centerFrequencyDragHandle
+
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
 
-            height: marquee.lineWidth
-            color: marquee.color
+            height: 10
+
+            MouseArea {
+                id: centerFrequencyMouseArea
+
+                anchors.fill: parent
+                cursorShape: Qt.SizeVerCursor
+
+                drag.target: parent
+                drag.axis: Drag.YAxis
+
+                onPressed: {
+                    selectionModel.startCenterFrequencyDrag()
+                    selectionController.startFrequencySelectionDrag()
+                }
+
+                onPositionChanged: function (mouse) {
+                    const absoluteY = centerFrequencyDragHandle.mapToItem(root, 0, mouse.y).y
+                    selectionModel.dragCenterFrequency(absoluteY)
+                }
+
+                onReleased: {
+                    selectionModel.endCenterFrequencyDrag()
+                    selectionController.endFrequencySelectionDrag()
+                }
+
+                onCanceled: {
+                    selectionModel.endCenterFrequencyDrag()
+                    selectionController.endFrequencySelectionDrag()
+                }
+            }
+
+            Canvas {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                height: marquee.lineWidth
+
+                antialiasing: false
+
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.clearRect(0, 0, width, height)
+                    ctx.lineWidth = marquee.lineWidth
+
+                    ctx.beginPath()
+                    ctx.moveTo(0.5, height / 2)
+                    ctx.lineTo(width - 1, height / 2)
+
+                    ctx.setLineDash([4, 4])
+                    ctx.strokeStyle = "black"
+                    ctx.lineDashOffset = 0
+                    ctx.stroke()
+                    ctx.strokeStyle = marquee.color
+                    ctx.lineDashOffset = 4
+                    ctx.stroke()
+                }
+            }
         }
     }
 
