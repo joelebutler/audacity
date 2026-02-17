@@ -91,9 +91,6 @@ QVariantList GetEffectsModel::effectsGroups() const
     QVariantList result;
     for (int i = 0; i < m_allGroups.size(); ++i) {
         const auto& group = m_allGroups[i];
-        if (m_selectedCategoryIndex != i) {
-            continue;
-        }
         QVariantList effectsList;
         for (const auto& effect : group.effects) {
             QVariantMap effectMap;
@@ -133,7 +130,6 @@ void GetEffectsModel::setSelectedCategoryIndex(int index)
     }
     m_selectedCategoryIndex = index;
     emit selectedCategoryIndexChanged();
-    emit effectsGroupsChanged();
 }
 
 bool GetEffectsModel::isLoading() const { return m_isLoading; }

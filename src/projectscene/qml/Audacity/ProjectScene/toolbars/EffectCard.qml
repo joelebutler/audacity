@@ -64,6 +64,7 @@ Rectangle {
                 source: root.iconUrl
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
+                cache: true
                 visible: status === Image.Ready
             }
 

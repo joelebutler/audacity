@@ -194,9 +194,13 @@ StyledDialogView {
 
         Column {
             width: effectsColumn.width
-            spacing: prv.spaceXL
 
+            required property int index
             required property var modelData
+
+            visible: index === effectsModel.selectedCategoryIndex
+            spacing: visible ? prv.spaceXL : 0
+            height: visible ? implicitHeight : 0
 
             Flow {
                 width: parent.width
@@ -213,7 +217,7 @@ StyledDialogView {
                         subtitle: modelData.subtitle
                         effectCode: modelData.code
 
-                        onGetEffectClicked: function(code) {
+                        onGetEffectClicked: function (code) {
                             effectsModel.openEffectUrl(code)
                         }
                     }
