@@ -45,8 +45,6 @@ public:
     ChannelSpectralSelectionModel(QObject* parent = nullptr);
     ~ChannelSpectralSelectionModel() override = default;
 
-    Q_INVOKABLE double positionToFrequency(double y) const;
-
     double trackSampleRate() const { return m_trackSampleRate; }
     void setTrackSampleRate(double rate);
 
@@ -96,6 +94,8 @@ signals:
 
 private:
     std::pair<double, double> selectionYRange() const;
+    double positionToFrequency(double y) const;
+    double frequencyToPosition(double frequency) const;
 
     double m_trackSampleRate = 0.0;
     int m_trackId = -1;

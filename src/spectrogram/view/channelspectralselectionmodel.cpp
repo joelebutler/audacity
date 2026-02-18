@@ -28,6 +28,20 @@ double ChannelSpectralSelectionModel::positionToFrequency(double y) const
     return numberScale.positionToValue(position);
 }
 
+double ChannelSpectralSelectionModel::frequencyToPosition(double frequency) const
+{
+    const auto config = spectrogramService()->trackSpectrogramConfiguration(m_trackId);
+    if (!config) {
+        return 0.0;
+    }
+
+    const auto [minFreq, maxFreq] = spectrogramBounds(*config, m_trackSampleRate);
+
+    const NumberScale numberScale(config->scale(), minFreq, maxFreq);
+    const double valuePosition = numberScale.valueToPosition(frequency);
+    return (1.0 - valuePosition) * m_channelHeight;
+}
+
 void ChannelSpectralSelectionModel::setTrackSampleRate(double rate)
 {
     if (muse::is_equal(m_trackSampleRate, rate)) {
@@ -159,30 +173,37 @@ void ChannelSpectralSelectionModel::dragCenterFrequency(double y)
     }
 
     const double peakFrequency = m_peakFinder->findPeak(frequency);
+    const double peakPosition = frequencyToPosition(peakFrequency);
+
+    const auto startFreqPos = frequencyToPosition(m_dragStartFrequencySelection.startFrequency);
+    const auto endFreqPos = frequencyToPosition(m_dragStartFrequencySelection.endFrequency);
+    const auto range = endFreqPos - startFreqPos;
+    auto newStartFreqPos = peakPosition - range / 2;
+    auto newEndFreqPos = peakPosition + range / 2;
 
     const auto config = spectrogramService()->trackSpectrogramConfiguration(m_dragStartFrequencySelection.trackId);
     IF_ASSERT_FAILED(config) {
         return;
     }
-    const auto range = m_dragStartFrequencySelection.endFrequency - m_dragStartFrequencySelection.startFrequency;
-    auto newStartFreq = peakFrequency - range / 2;
-    auto newEndFreq = peakFrequency + range / 2;
 
-    const auto minFreq = config->minFreq();
-    const auto maxFreq = config->maxFreq();
-    if (newStartFreq < minFreq) {
-        const auto delta = minFreq - newStartFreq;
-        newEndFreq = std::max<double>(newEndFreq - delta, minFreq);
-        newStartFreq = minFreq;
-    } else if (newEndFreq > maxFreq) {
-        const auto delta = newEndFreq - maxFreq;
-        newStartFreq = std::min<double>(newStartFreq + delta, maxFreq);
-        newEndFreq = maxFreq;
+    const auto minFreqPos = frequencyToPosition(config->minFreq());
+    const auto maxFreqPos = frequencyToPosition(config->maxFreq());
+    if (newStartFreqPos > minFreqPos) {
+        const auto delta = newStartFreqPos - minFreqPos;
+        newEndFreqPos = std::min<double>(newEndFreqPos + delta, minFreqPos);
+        newStartFreqPos = minFreqPos;
+    } else if (newEndFreqPos < maxFreqPos) {
+        const auto delta = maxFreqPos - newEndFreqPos;
+        newStartFreqPos = std::max<double>(newStartFreqPos - delta, maxFreqPos);
+        newEndFreqPos = maxFreqPos;
     }
 
-    if (newStartFreq == newEndFreq) {
+    if (newStartFreqPos == newEndFreqPos) {
         return;
     }
+
+    const auto newStartFreq = positionToFrequency(newStartFreqPos);
+    const auto newEndFreq = positionToFrequency(newEndFreqPos);
 
     frequencySelectionController()->setFrequencySelection({ m_dragStartFrequencySelection.trackId, newStartFreq, newEndFreq });
 }
