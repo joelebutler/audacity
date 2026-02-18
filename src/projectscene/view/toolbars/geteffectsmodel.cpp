@@ -3,8 +3,10 @@
 */
 #include "geteffectsmodel.h"
 
-#include <QTimer>
 #include <QPointer>
+
+#include "framework/global/runtime.h"
+#include "framework/global/async/async.h"
 
 #include "au3-musehub/MuseHubService.h"
 
@@ -25,7 +27,7 @@ void GetEffectsModel::load()
         if (!guard) {
             return;
         }
-        QTimer::singleShot(0, this, [this, guard, groups = std::move(groups)]()
+        muse::async::Async::call(this, [this, guard, groups = std::move(groups)]()
         {
             if (!guard) {
                 return;
@@ -62,7 +64,7 @@ void GetEffectsModel::load()
             }
             emit categoriesChanged();
             emit effectsGroupsChanged();
-        });
+        }, muse::runtime::mainThreadId());
     });
 }
 
