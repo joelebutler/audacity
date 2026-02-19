@@ -12,6 +12,7 @@
 #include "trackedit/iselectioncontroller.h"
 #include "trackedit/itrackeditinteraction.h"
 #include "spectrogram/view/spectrogramhit.h"
+#include "spectrogram/ifrequencyselectioncontroller.h"
 #include "spectrogram/ispectrogramservice.h"
 #include "spectrogram/iglobalspectrogramconfiguration.h"
 #include "trackedit/internal/itracknavigationcontroller.h"
@@ -38,8 +39,10 @@ class SelectionViewController : public QObject, public muse::async::Asyncable, p
     muse::Inject<context::IGlobalContext> globalContext { this };
     muse::Inject<trackedit::ISelectionController> selectionController { this };
     muse::Inject<trackedit::ITrackeditInteraction> trackeditInteraction { this };
-    muse::Inject<spectrogram::ISpectrogramService> spectrogramService { this };
     muse::Inject<trackedit::ITrackNavigationController> trackNavigationController { this };
+
+    muse::Inject<spectrogram::IFrequencySelectionController> frequencySelectionController { this };
+    muse::Inject<spectrogram::ISpectrogramService> spectrogramService { this };
 
 public:
     SelectionViewController(QObject* parent = nullptr);

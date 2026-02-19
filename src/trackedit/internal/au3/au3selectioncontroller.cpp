@@ -953,56 +953,6 @@ void Au3SelectionController::setSelectionStartTime(secs_t time)
     m_selectionStartTime.set(time, true);
 }
 
-std::pair<double, double> Au3SelectionController::frequencySelection(trackedit::TrackId trackId) const
-{
-    if (m_frequencySelection.has_value() && m_frequencySelection->trackId == static_cast<int>(trackId)) {
-        return { m_frequencySelection->startFrequency, m_frequencySelection->endFrequency };
-    }
-    return { spectrogram::SelectionInfo::UndefinedFrequency, spectrogram::SelectionInfo::UndefinedFrequency };
-}
-
-void Au3SelectionController::setFrequencySelection(trackedit::TrackId trackId, const std::pair<double, double>& selection)
-{
-    TrackFrequencySelection trackFrequencySelection{ static_cast<int>(trackId), selection.first, selection.second };
-    if (m_frequencySelection == trackFrequencySelection) {
-        return;
-    }
-
-    const std::optional<trackedit::TrackId> previousTrackId
-        = m_frequencySelection ? std::make_optional(m_frequencySelection->trackId) : std::nullopt;
-
-    muse::Defer notifyPreviousTrack([this, trackId, previousTrackId]() {
-        if (previousTrackId && previousTrackId != trackId) {
-            m_frequencySelectionChanged.send(*previousTrackId);
-        }
-    });
-
-    if (selection.first == spectrogram::SelectionInfo::UndefinedFrequency
-        && selection.second == spectrogram::SelectionInfo::UndefinedFrequency) {
-        m_frequencySelection.reset();
-        return;
-    }
-    m_frequencySelection.emplace(trackFrequencySelection);
-    m_frequencySelectionChanged.send(trackId);
-}
-
-void Au3SelectionController::resetFrequencySelection()
-{
-    if (!m_frequencySelection.has_value()) {
-        return;
-    }
-
-    const trackedit::TrackId previousTrackId = m_frequencySelection->trackId;
-
-    m_frequencySelection.reset();
-    m_frequencySelectionChanged.send(previousTrackId);
-}
-
-muse::async::Channel<au::trackedit::TrackId> Au3SelectionController::frequencySelectionChanged() const
-{
-    return m_frequencySelectionChanged;
-}
-
 void Au3SelectionController::updateSelectionController()
 {
     auto& tracks = Au3TrackList::Get(projectRef());
