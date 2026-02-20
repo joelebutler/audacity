@@ -21,7 +21,7 @@ public:
     BuiltinEffectsRepository(const muse::modularity::ContextPtr& ctx)
         : muse::Injectable(ctx) {}
 
-    void preInit();
+    static void preInit();
     void init();
 
     muse::async::Notification effectMetaListUpdated() const override;

@@ -16,7 +16,7 @@ void NyquistEffectsModule::registerExports()
 {
     m_nyquistEffectsRepository = std::make_shared<NyquistEffectsRepository>();
 
-    ioc()->registerExport<INyquistEffectsRepository>(moduleName(), m_nyquistEffectsRepository);
+    globalIoc()->registerExport<INyquistEffectsRepository>(moduleName(), m_nyquistEffectsRepository);
 }
 
 void NyquistEffectsModule::resolveImports()

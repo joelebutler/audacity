@@ -16,6 +16,8 @@
 
 using namespace au::effects;
 
+static const std::string mname("effects_builtin");
+
 static void effects_builtin_init_qrc()
 {
     Q_INIT_RESOURCE(effects_builtin);
@@ -23,23 +25,12 @@ static void effects_builtin_init_qrc()
 
 std::string BuiltinEffectsModule::moduleName() const
 {
-    return "effects_builtin";
+    return mname;
 }
 
 void BuiltinEffectsModule::registerExports()
 {
-    m_builtinEffectsRepository = std::make_shared<BuiltinEffectsRepository>(iocContext());
-
-    ioc()->registerExport<IBuiltinEffectsRepository>(moduleName(), m_builtinEffectsRepository);
-    ioc()->registerExport<IEffectsViewRegister>(moduleName(), new EffectsViewRegister());
-}
-
-void BuiltinEffectsModule::resolveImports()
-{
-    auto lr = ioc()->resolve<IEffectViewLaunchRegister>(moduleName());
-    if (lr) {
-        lr->regLauncher("Audacity" /*builtin*/, std::make_shared<BuiltinViewLauncher>(iocContext()));
-    }
+    globalIoc()->registerExport<IEffectsViewRegister>(mname, new EffectsViewRegister());
 }
 
 void BuiltinEffectsModule::registerResources()
@@ -56,10 +47,40 @@ void BuiltinEffectsModule::registerUiTypes()
 
 void BuiltinEffectsModule::onPreInit(const muse::IApplication::RunMode&)
 {
-    m_builtinEffectsRepository->preInit();
+    //! NOTE preInit() only creates static Registration objects (doesn't use `this`).
+    //! Must run at module level before Au3WrapModule::onInit() sets sInitialized = true.
+    BuiltinEffectsRepository::preInit();
 }
 
-void BuiltinEffectsModule::onInit(const muse::IApplication::RunMode&)
+muse::modularity::IContextSetup* BuiltinEffectsModule::newContext(const muse::modularity::ContextPtr& ctx) const
+{
+    return new BuiltinEffectsContext(ctx);
+}
+
+// =====================================================
+// BuiltinEffectsContext
+// =====================================================
+
+void BuiltinEffectsContext::registerExports()
+{
+    m_builtinEffectsRepository = std::make_shared<BuiltinEffectsRepository>(iocContext());
+
+    ioc()->registerExport<IBuiltinEffectsRepository>(mname, m_builtinEffectsRepository);
+}
+
+void BuiltinEffectsContext::resolveImports()
+{
+    auto lr = ioc()->resolve<IEffectViewLaunchRegister>(mname);
+    if (lr) {
+        lr->regLauncher("Audacity" /*builtin*/, std::make_shared<BuiltinViewLauncher>(iocContext()));
+    }
+}
+
+void BuiltinEffectsContext::onInit(const muse::IApplication::RunMode&)
 {
     m_builtinEffectsRepository->init();
+}
+
+void BuiltinEffectsContext::onDeinit()
+{
 }

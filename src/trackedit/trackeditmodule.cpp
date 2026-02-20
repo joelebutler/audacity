@@ -57,6 +57,8 @@ using namespace muse::modularity;
 using namespace muse::ui;
 using namespace muse::actions;
 
+static const std::string mname("trackedit");
+
 TrackeditModule::TrackeditModule()
 {
 }
@@ -68,31 +70,14 @@ static void trackedit_init_qrc()
 
 std::string TrackeditModule::moduleName() const
 {
-    return "trackedit";
+    return mname;
 }
 
 void TrackeditModule::registerExports()
 {
-    m_trackeditController = std::make_shared<TrackeditActionsController>(iocContext());
-    m_trackeditUiActions = std::make_shared<TrackeditUiActions>(iocContext(), m_trackeditController);
-    m_selectionController = std::make_shared<Au3SelectionController>(iocContext());
     m_configuration = std::make_shared<TrackeditConfiguration>();
-    m_trackNavigationController = std::make_shared<TrackNavigationController>(iocContext());
-    m_trackSpectrogramSettingsUpdater = std::make_shared<TrackSpectrogramSettingsUpdater>(iocContext());
 
-    ioc()->registerExport<ITrackeditProjectCreator>(moduleName(), new Au3TrackeditProjectCreator(iocContext()));
-    ioc()->registerExport<ITrackeditInteraction>(moduleName(),
-                                                 new TrackeditInteraction(iocContext(), std::make_unique<TrackeditOperationController>(
-                                                                              iocContext(), std::make_unique<UndoManager>(iocContext()))));
-    ioc()->registerExport<ISelectionController>(moduleName(), m_selectionController);
-    ioc()->registerExport<IProjectHistory>(moduleName(), new Au3ProjectHistory(iocContext()));
-    ioc()->registerExport<ITrackeditClipboard>(moduleName(), new Au3TrackeditClipboard(iocContext()));
-    ioc()->registerExport<ITrackeditConfiguration>(moduleName(), m_configuration);
-    ioc()->registerExport<ITrackNavigationController>(moduleName(), m_trackNavigationController);
-
-    ioc()->registerExport<ITracksInteraction>(moduleName(), new Au3TracksInteraction(iocContext()));
-    ioc()->registerExport<IClipsInteraction>(moduleName(), new Au3ClipsInteraction(iocContext()));
-    ioc()->registerExport<ILabelsInteraction>(moduleName(), new Au3LabelsInteraction(iocContext()));
+    globalIoc()->registerExport<ITrackeditConfiguration>(mname, m_configuration);
 }
 
 void TrackeditModule::registerUiTypes()
@@ -105,7 +90,7 @@ void TrackeditModule::registerUiTypes()
 
 void TrackeditModule::resolveImports()
 {
-    auto ir = ioc()->resolve<muse::interactive::IInteractiveUriRegister>(moduleName());
+    auto ir = globalIoc()->resolve<muse::interactive::IInteractiveUriRegister>(mname);
     if (ir) {
         ir->registerQmlUri(muse::Uri("audacity://trackedit/custom_rate"), "Audacity/TrackEdit/CustomRateDialog.qml");
         ir->registerQmlUri(muse::Uri("audacity://trackedit/custom_time"), "Audacity/TrackEdit/CustomTimeDialog.qml");
@@ -125,21 +110,59 @@ void TrackeditModule::registerResources()
 
 void TrackeditModule::onInit(const muse::IApplication::RunMode&)
 {
-    m_trackeditController->init();
-    m_selectionController->init();
     m_configuration->init();
-    m_trackNavigationController->init();
-    m_trackSpectrogramSettingsUpdater->init();
 
     TimeSignatureRestorer::reg();
+}
 
-    m_trackeditUiActions->init();
-    auto ar = ioc()->resolve<muse::ui::IUiActionsRegister>(moduleName());
+IContextSetup* TrackeditModule::newContext(const muse::modularity::ContextPtr& ctx) const
+{
+    return new TrackeditContext(ctx);
+}
+
+// =====================================================
+// TrackeditContext
+// =====================================================
+
+void TrackeditContext::registerExports()
+{
+    m_trackeditController = std::make_shared<TrackeditActionsController>(iocContext());
+    m_trackeditUiActions = std::make_shared<TrackeditUiActions>(iocContext(), m_trackeditController);
+    m_selectionController = std::make_shared<Au3SelectionController>(iocContext());
+    m_trackNavigationController = std::make_shared<TrackNavigationController>(iocContext());
+    m_trackSpectrogramSettingsUpdater = std::make_shared<TrackSpectrogramSettingsUpdater>(iocContext());
+
+    ioc()->registerExport<ITrackeditProjectCreator>(mname, new Au3TrackeditProjectCreator(iocContext()));
+    ioc()->registerExport<ITrackeditInteraction>(mname,
+                                                 new TrackeditInteraction(iocContext(), std::make_unique<TrackeditOperationController>(
+                                                                              iocContext(), std::make_unique<UndoManager>(iocContext()))));
+    ioc()->registerExport<ISelectionController>(mname, m_selectionController);
+    ioc()->registerExport<IProjectHistory>(mname, new Au3ProjectHistory(iocContext()));
+    ioc()->registerExport<ITrackeditClipboard>(mname, new Au3TrackeditClipboard(iocContext()));
+    ioc()->registerExport<ITrackNavigationController>(mname, m_trackNavigationController);
+
+    ioc()->registerExport<ITracksInteraction>(mname, new Au3TracksInteraction(iocContext()));
+    ioc()->registerExport<IClipsInteraction>(mname, new Au3ClipsInteraction(iocContext()));
+    ioc()->registerExport<ILabelsInteraction>(mname, new Au3LabelsInteraction(iocContext()));
+}
+
+void TrackeditContext::resolveImports()
+{
+    auto ar = ioc()->resolve<muse::ui::IUiActionsRegister>(mname);
     if (ar) {
         ar->reg(m_trackeditUiActions);
     }
 }
 
-void TrackeditModule::onDeinit()
+void TrackeditContext::onInit(const muse::IApplication::RunMode&)
+{
+    m_trackeditUiActions->init();
+    m_trackeditController->init();
+    m_selectionController->init();
+    m_trackNavigationController->init();
+    m_trackSpectrogramSettingsUpdater->init();
+}
+
+void TrackeditContext::onDeinit()
 {
 }

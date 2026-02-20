@@ -23,6 +23,8 @@ using namespace muse::modularity;
 using namespace muse::ui;
 using namespace muse::actions;
 
+static const std::string mname("record");
+
 static void record_init_qrc()
 {
     Q_INIT_RESOURCE(record);
@@ -30,29 +32,16 @@ static void record_init_qrc()
 
 std::string RecordModule::moduleName() const
 {
-    return "record";
+    return mname;
 }
 
 void RecordModule::registerExports()
 {
     m_configuration = std::make_shared<RecordConfiguration>();
-    m_controller = std::make_shared<RecordController>(iocContext());
     m_meterController = std::make_shared<RecordMeterController>();
-    m_uiActions = std::make_shared<RecordUiActions>(iocContext(), m_controller);
-    m_record = std::make_shared<Au3Record>(iocContext());
 
-    ioc()->registerExport<IRecordConfiguration>(moduleName(), m_configuration);
-    ioc()->registerExport<IRecordController>(moduleName(), m_controller);
-    ioc()->registerExport<IRecordMeterController>(moduleName(), m_meterController);
-    ioc()->registerExport<IRecord>(moduleName(), m_record);
-}
-
-void RecordModule::resolveImports()
-{
-    auto ar = ioc()->resolve<IUiActionsRegister>(moduleName());
-    if (ar) {
-        ar->reg(m_uiActions);
-    }
+    globalIoc()->registerExport<IRecordConfiguration>(mname, m_configuration);
+    globalIoc()->registerExport<IRecordMeterController>(mname, m_meterController);
 }
 
 void RecordModule::registerResources()
@@ -71,13 +60,48 @@ void RecordModule::onInit(const IApplication::RunMode& mode)
         return;
     }
 
-    m_controller->init();
-    m_uiActions->init();
-    m_record->init();
     m_configuration->init();
 }
 
-void RecordModule::onDeinit()
+IContextSetup* RecordModule::newContext(const muse::modularity::ContextPtr& ctx) const
+{
+    return new RecordContext(ctx);
+}
+
+// =====================================================
+// RecordContext
+// =====================================================
+
+void RecordContext::registerExports()
+{
+    m_controller = std::make_shared<RecordController>(iocContext());
+    m_uiActions = std::make_shared<RecordUiActions>(iocContext(), m_controller);
+    m_record = std::make_shared<Au3Record>(iocContext());
+
+    ioc()->registerExport<IRecordController>(mname, m_controller);
+    ioc()->registerExport<IRecord>(mname, m_record);
+}
+
+void RecordContext::resolveImports()
+{
+    auto ar = ioc()->resolve<IUiActionsRegister>(mname);
+    if (ar) {
+        ar->reg(m_uiActions);
+    }
+}
+
+void RecordContext::onInit(const IApplication::RunMode& mode)
+{
+    if (mode == IApplication::RunMode::AudioPluginRegistration) {
+        return;
+    }
+
+    m_controller->init();
+    m_uiActions->init();
+    m_record->init();
+}
+
+void RecordContext::onDeinit()
 {
     m_controller->deinit();
 }

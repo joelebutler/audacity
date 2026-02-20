@@ -18,10 +18,13 @@
 #include "modularity/ioc.h"
 #include "async/processevents.h"
 #include "ui/internal/uiengine.h"
+#include "ui/view/qmlapi.h"
 #include "ui/graphicsapiprovider.h"
 
 #include "appshell/internal/splashscreen/splashscreen.h"
 #include "project/types/projecttypes.h"
+
+#include "muse_framework_config.h"
 
 #include "log.h"
 
@@ -39,8 +42,10 @@ GuiApp::GuiApp(const CommandLineParser::Options& options, const muse::modularity
 int GuiApp::lastId()
 {
     // TODO: should be provided by AppFactory
+#ifndef MUSE_MULTICONTEXT_WIP
     static int lastId = -1;
-#ifdef MUSE_MULTICONTEXT_WIP
+#else
+    static int lastId = 0;
     lastId++;
 #endif
     return lastId;
@@ -138,7 +143,7 @@ void GuiApp::setup()
         }
     }, Qt::QueuedConnection);
 
-    QQmlApplicationEngine* engine = modularity::ioc()->resolve<muse::ui::IUiEngine>("app")->qmlAppEngine();
+    QQmlApplicationEngine* engine = modularity::globalIoc()->resolve<muse::ui::IUiEngine>("app")->qmlAppEngine();
 
     QObject::connect(engine, &QQmlEngine::warnings, [](const QList<QQmlError>& warnings) {
         for (const QQmlError& e : warnings) {
@@ -197,7 +202,7 @@ void GuiApp::finish()
 #endif
 
     // Engine quit
-    modularity::ioc()->resolve<muse::ui::IUiEngine>("app")->quit();
+    muse::modularity::globalIoc()->resolve<muse::ui::IUiEngine>("app")->quit();
 
     // Deinit
     muse::async::processMessages();
@@ -215,7 +220,11 @@ void GuiApp::finish()
 
     // Delete contexts
     for (auto& c : m_contexts) {
+        for (modularity::IContextSetup* s : c.setups) {
+            s->onDeinit();
+        }
         qDeleteAll(c.setups);
+        modularity::removeIoC(c.ctx);
     }
     m_contexts.clear();
 
@@ -254,7 +263,7 @@ std::vector<muse::modularity::IContextSetup*>& GuiApp::contextSetups(const muse:
     return ref.setups;
 }
 
-modularity::ContextPtr GuiApp::setupNewContext()
+modularity::ContextPtr GuiApp::setupNewContext(const muse::StringList&)
 {
 #ifndef MUSE_MULTICONTEXT_WIP
     static bool once = false;
@@ -307,6 +316,9 @@ modularity::ContextPtr GuiApp::setupNewContext()
     iocCtx->ctx = ctx;
     qmlCtx->setContextProperty("ioc_context", QVariant::fromValue(iocCtx));
 
+    muse::ui::QmlApi* windowApi = new muse::ui::QmlApi(qmlCtx, ctx);
+    qmlCtx->setContextProperty("api", windowApi);
+
     QObject* obj = component.create(qmlCtx);
     if (!obj) {
         LOGE() << "Failed to create QML object for new context: " << component.errorString().toStdString() << "\n";
@@ -314,7 +326,16 @@ modularity::ContextPtr GuiApp::setupNewContext()
         return nullptr;
     }
 
-    const auto finalizeStartup = [this, obj]() {
+#ifdef MUSE_MULTICONTEXT_WIP
+    if (ctx->id > 0) {
+        QQuickWindow* w = dynamic_cast<QQuickWindow*>(obj);
+        QObject::connect(w, &QObject::destroyed, [this, ctx]() {
+            destroyContext(ctx);
+        });
+    }
+#endif
+
+    const auto finalizeStartup = [this, obj, ctx]() {
         static bool haveFinalized = false;
 #ifndef MUSE_MULTICONTEXT_WIP
         IF_ASSERT_FAILED(!haveFinalized) {
@@ -335,20 +356,45 @@ modularity::ContextPtr GuiApp::setupNewContext()
         // otherwise the empty window frame will be visible
         // https://github.com/musescore/MuseScore/issues/29630
         // Transparency will be removed after the page loads.
-        QQuickWindow* w = dynamic_cast<QQuickWindow*>(obj);
-        w->setOpacity(0.01);
-        w->setVisible(true);
-
-        startupScenario()->runAfterSplashScreen();
+        QQuickWindow* qw = dynamic_cast<QQuickWindow*>(obj);
+        qw->setOpacity(0.01);
+        qw->setVisible(true);
+        auto startupScenario = muse::modularity::ioc(ctx)->resolve<IStartupScenario>("app");
+        startupScenario->runAfterSplashScreen();
         haveFinalized = true;
     };
 
-    muse::async::Promise<Ret> promise = startupScenario()->runOnSplashScreen();
+    auto startupScenario = muse::modularity::ioc(ctx)->resolve<IStartupScenario>("app");
+    muse::async::Promise<Ret> promise = startupScenario->runOnSplashScreen();
     promise.onResolve(nullptr, [finalizeStartup](Ret) {
         finalizeStartup();
     });
 
     return ctx;
+}
+
+void GuiApp::destroyContext(const modularity::ContextPtr& ctx)
+{
+    if (!ctx) {
+        return;
+    }
+
+    LOGI() << "Destroying context with id: " << ctx->id;
+
+    auto it = std::find_if(m_contexts.begin(), m_contexts.end(),
+                           [&ctx](const Context& c) { return c.ctx->id == ctx->id; });
+    if (it == m_contexts.end()) {
+        LOGW() << "Context not found: " << ctx->id;
+        return;
+    }
+
+    for (modularity::IContextSetup* s : it->setups) {
+        s->onDeinit();
+    }
+
+    qDeleteAll(it->setups);
+    m_contexts.erase(it);
+    modularity::removeIoC(ctx);
 }
 
 int GuiApp::contextCount() const
@@ -372,7 +418,10 @@ void GuiApp::applyCommandLineOptions(const CommandLineParser::Options& options)
         appshellConfiguration()->revertToFactorySettings(options.app.revertToFactorySettings.value());
     }
 
-    startupScenario()->setStartupType(options.startup.type);
+#ifndef MUSE_MULTICONTEXT_WIP
+    auto startupScenario = modularity::ioc(m_contexts.front().ctx)->resolve<IStartupScenario>("app");
+
+    startupScenario->setStartupType(options.startup.type);
 
     if (options.startup.projectUrl.has_value()) {
         project::ProjectFile file { options.startup.projectUrl.value() };
@@ -381,8 +430,9 @@ void GuiApp::applyCommandLineOptions(const CommandLineParser::Options& options)
             file.displayNameOverride = options.startup.projectDisplayNameOverride.value();
         }
 
-        startupScenario()->setStartupScoreFile(file);
+        startupScenario->setStartupScoreFile(file);
     }
+#endif
 
     if (options.app.loggerLevel) {
         m_globalModule.setLoggerLevel(options.app.loggerLevel.value());

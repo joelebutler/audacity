@@ -52,6 +52,8 @@
 using namespace au::project;
 using namespace muse::modularity;
 
+static const std::string mname("project");
+
 static void project_init_qrc()
 {
     Q_INIT_RESOURCE(project);
@@ -59,17 +61,12 @@ static void project_init_qrc()
 
 std::string ProjectModule::moduleName() const
 {
-    return "project";
+    return mname;
 }
 
 void ProjectModule::registerExports()
 {
     m_configuration = std::make_shared<ProjectConfiguration>();
-    m_actionsController = std::make_shared<ProjectActionsController>(iocContext());
-    m_uiActions = std::make_shared<ProjectUiActions>(m_actionsController);
-    m_thumbnailCreator = std::make_shared<ThumbnailCreator>();
-    m_tagsAccessor = std::make_shared<Au3Metadata>(iocContext());
-    // m_projectAutoSaver = std::make_shared<ProjectAutoSaver>(); // we don't use at the moment 01/09/2025 the project auto saver as we already have the autosave table
 
 #ifdef Q_OS_MAC
     m_recentFilesController = std::make_shared<MacOSRecentFilesController>();
@@ -79,22 +76,13 @@ void ProjectModule::registerExports()
     m_recentFilesController = std::make_shared<RecentFilesController>();
 #endif
 
-    ioc()->registerExport<IProjectConfiguration>(moduleName(), m_configuration);
-    ioc()->registerExport<IRecentFilesController>(moduleName(), m_recentFilesController);
-    ioc()->registerExport<IOpenSaveProjectScenario>(moduleName(), new OpenSaveProjectScenario(iocContext()));
-    ioc()->registerExport<IProjectFilesController>(moduleName(), m_actionsController);
-    ioc()->registerExport<IThumbnailCreator>(moduleName(), m_thumbnailCreator);
-    ioc()->registerExport<IMetadata>(moduleName(), m_tagsAccessor);
-    // ioc()->registerExport<IProjectAutoSaver>(moduleName(), m_projectAutoSaver);
+    globalIoc()->registerExport<IProjectConfiguration>(mname, m_configuration);
+    globalIoc()->registerExport<IRecentFilesController>(mname, m_recentFilesController);
 }
 
 void ProjectModule::resolveImports()
 {
-    auto ar = ioc()->resolve<muse::ui::IUiActionsRegister>(moduleName());
-    if (ar) {
-        ar->reg(m_uiActions);
-    }
-    auto ir = ioc()->resolve<muse::interactive::IInteractiveUriRegister>(moduleName());
+    auto ir = globalIoc()->resolve<muse::interactive::IInteractiveUriRegister>(mname);
     if (ir) {
         ir->registerQmlUri(muse::Uri("audacity://project/new"), "Audacity/Project/NewProjectDialog.qml");
         ir->registerQmlUri(muse::Uri("audacity://project/asksavelocationtype"), "Audacity/Project/AskSaveLocationTypeDialog.qml");
@@ -126,12 +114,45 @@ void ProjectModule::registerUiTypes()
 void ProjectModule::onInit(const muse::IApplication::RunMode&)
 {
     m_configuration->init();
-    m_actionsController->init();
-    m_uiActions->init();
     m_recentFilesController->init();
-    // m_projectAutoSaver->init();
 }
 
-void ProjectModule::onDeinit()
+IContextSetup* ProjectModule::newContext(const muse::modularity::ContextPtr& ctx) const
+{
+    return new ProjectContext(ctx);
+}
+
+// =====================================================
+// ProjectContext
+// =====================================================
+
+void ProjectContext::registerExports()
+{
+    m_actionsController = std::make_shared<ProjectActionsController>(iocContext());
+    m_uiActions = std::make_shared<ProjectUiActions>(m_actionsController);
+    m_thumbnailCreator = std::make_shared<ThumbnailCreator>();
+    m_tagsAccessor = std::make_shared<Au3Metadata>(iocContext());
+
+    ioc()->registerExport<IProjectFilesController>(mname, m_actionsController);
+    ioc()->registerExport<IOpenSaveProjectScenario>(mname, new OpenSaveProjectScenario(iocContext()));
+    ioc()->registerExport<IThumbnailCreator>(mname, m_thumbnailCreator);
+    ioc()->registerExport<IMetadata>(mname, m_tagsAccessor);
+}
+
+void ProjectContext::resolveImports()
+{
+    auto ar = ioc()->resolve<muse::ui::IUiActionsRegister>(mname);
+    if (ar) {
+        ar->reg(m_uiActions);
+    }
+}
+
+void ProjectContext::onInit(const muse::IApplication::RunMode&)
+{
+    m_actionsController->init();
+    m_uiActions->init();
+}
+
+void ProjectContext::onDeinit()
 {
 }

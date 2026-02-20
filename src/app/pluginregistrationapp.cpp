@@ -163,7 +163,7 @@ std::vector<muse::modularity::IContextSetup*>& PluginRegistrationApp::contextSet
     return ref.setups;
 }
 
-modularity::ContextPtr PluginRegistrationApp::setupNewContext()
+modularity::ContextPtr PluginRegistrationApp::setupNewContext(const StringList& /*args*/)
 {
     // Single context mode: only allow one context
     static bool once = false;
@@ -178,6 +178,11 @@ modularity::ContextPtr PluginRegistrationApp::setupNewContext()
     }
 
     return nullptr;
+}
+
+void PluginRegistrationApp::destroyContext(const modularity::ContextPtr&)
+{
+    // Single context mode: context is destroyed in finish()
 }
 
 int PluginRegistrationApp::contextCount() const

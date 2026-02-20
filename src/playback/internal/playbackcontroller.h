@@ -32,7 +32,7 @@ public:
     muse::Inject<audio::IAudioDevicesProvider> audioDevicesProvider { this };
     muse::Inject<IPlayback> playback { this };
     muse::Inject<muse::actions::IActionsDispatcher> dispatcher { this };
-    muse::Inject<muse::IApplication> application { this };
+    muse::GlobalInject<muse::IApplication> application;
     muse::Inject<muse::IInteractive> interactive { this };
     muse::Inject<record::IRecordController> recordController{ this };
     muse::Inject<trackedit::ISelectionController> selectionController{ this };
