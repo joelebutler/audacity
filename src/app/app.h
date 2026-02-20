@@ -38,7 +38,7 @@ class App : public muse::Injectable
 {
     muse::GlobalInject<appshell::IAppShellConfiguration> appshellConfiguration;
 
-    muse::Inject<muse::IApplication> muapplication{ this };
+    muse::GlobalInject<muse::IApplication> muapplication;
     muse::Inject<appshell::IStartupScenario> startupScenario{ this };
     muse::Inject<muse::audioplugins::IRegisterAudioPluginsScenario> registerAudioPluginsScenario{ this };
 

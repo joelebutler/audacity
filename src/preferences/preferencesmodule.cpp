@@ -13,7 +13,7 @@ std::string PreferencesModule::moduleName() const
 
 void PreferencesModule::resolveImports()
 {
-    auto ir = ioc()->resolve<muse::interactive::IInteractiveUriRegister>(moduleName());
+    auto ir = globalIoc()->resolve<muse::interactive::IInteractiveUriRegister>(moduleName());
     if (ir) {
         ir->registerQmlUri(muse::Uri("audacity://preferences"), "Audacity.Preferences", "PreferencesDialog");
     }

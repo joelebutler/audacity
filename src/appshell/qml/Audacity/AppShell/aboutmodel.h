@@ -44,7 +44,7 @@ class AboutModel : public QObject, public muse::Injectable
     muse::GlobalInject<IAppShellConfiguration> configuration;
     muse::GlobalInject<muse::IGlobalConfiguration> globalConfiguration;
 
-    muse::Inject<muse::IApplication> application { this };
+    muse::GlobalInject<muse::IApplication> application;
 
 //! TODO AU4
 //     muse::GlobalInject<update::IUpdateConfiguration> updateConfiguration;

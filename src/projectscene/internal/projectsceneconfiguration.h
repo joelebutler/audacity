@@ -16,8 +16,6 @@ class ProjectSceneConfiguration : public IProjectSceneConfiguration, public muse
 public:
     muse::GlobalInject<muse::ui::IUiConfiguration> uiConfiguration;
 
-    muse::Inject<muse::workspace::IWorkspaceManager> workspaceManager { this };
-
 public:
     ProjectSceneConfiguration(const muse::modularity::ContextPtr& ctx)
         : muse::Injectable(ctx) {}

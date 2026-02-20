@@ -34,6 +34,8 @@
 
 using namespace au::effects;
 
+static const std::string mname("effects_base");
+
 static void effects_base_init_qrc()
 {
     Q_INIT_RESOURCE(effects_base);
@@ -41,34 +43,20 @@ static void effects_base_init_qrc()
 
 std::string EffectsModule::moduleName() const
 {
-    return "effects_base";
+    return mname;
 }
 
 void EffectsModule::registerExports()
 {
-    m_effectsProvider = std::make_shared<EffectsProvider>(iocContext());
-    m_effectsMenuProvider = std::make_shared<EffectsMenuProvider>(iocContext());
     m_configuration = std::make_shared<EffectsConfiguration>();
-    m_actionsController = std::make_shared<EffectsActionsController>(iocContext());
-    m_realtimeEffectService = std::make_shared<RealtimeEffectService>(iocContext());
 
-    ioc()->registerExport<IEffectsProvider>(moduleName(), m_effectsProvider);
-    ioc()->registerExport<IEffectsMenuProvider>(moduleName(), m_effectsMenuProvider);
-    ioc()->registerExport<IEffectsConfiguration>(moduleName(), m_configuration);
-    ioc()->registerExport<IEffectsUiEngine>(moduleName(), std::make_shared<EffectsUiEngine>(iocContext()));
-    ioc()->registerExport<IEffectInstancesRegister>(moduleName(), new EffectInstancesRegister(iocContext()));
-    ioc()->registerExport<IEffectExecutionScenario>(moduleName(), std::make_shared<EffectExecutionScenario>(iocContext()));
-    ioc()->registerExport<IRealtimeEffectService>(moduleName(), m_realtimeEffectService);
-    ioc()->registerExport<IEffectPresetsProvider>(moduleName(), std::make_shared<EffectPresetsProvider>(iocContext()));
-    ioc()->registerExport<IEffectPresetsScenario>(moduleName(), std::make_shared<EffectPresetsScenario>(iocContext()));
-    ioc()->registerExport<IEffectViewLaunchRegister>(moduleName(), new EffectViewLaunchRegister());
-    ioc()->registerExport<IEffectParametersProvider>(moduleName(), new EffectParametersProvider(iocContext()));
-    ioc()->registerExport<IParameterExtractorRegistry>(moduleName(), new ParameterExtractorRegistry());
+    globalIoc()->registerExport<IEffectsConfiguration>(mname, m_configuration);
+    globalIoc()->registerExport<IParameterExtractorRegistry>(mname, new ParameterExtractorRegistry());
 }
 
 void EffectsModule::resolveImports()
 {
-    auto ir = ioc()->resolve<muse::interactive::IInteractiveUriRegister>(moduleName());
+    auto ir = globalIoc()->resolve<muse::interactive::IInteractiveUriRegister>(mname);
     if (ir) {
         ir->registerQmlUri(muse::Uri("audacity://effects/destructive_viewer"), "Audacity/Effects/DestructiveEffectsViewerDialog.qml");
         ir->registerQmlUri(muse::Uri("audacity://effects/realtime_viewer"), "Audacity/Effects/RealtimeEffectViewerDialog.qml");
@@ -97,27 +85,62 @@ void EffectsModule::onInit(const muse::IApplication::RunMode&)
         return std::make_unique<au3::EffectConfigSettings>(localFileName.ToStdString());
     });
 
-    m_effectsMenuProvider->init();
     m_configuration->init();
-    m_actionsController->init();
-    m_realtimeEffectService->init();
-    m_effectsProvider->init();
 
     //! --- Diagnostics ---
-    auto pr = ioc()->resolve<muse::diagnostics::IDiagnosticsPathsRegister>(moduleName());
+    auto pr = globalIoc()->resolve<muse::diagnostics::IDiagnosticsPathsRegister>(mname);
     if (pr) {
         pr->reg("pluginsettings", FileNames::PluginSettings().ToStdString());
     }
 }
 
-void EffectsModule::onAllInited(const muse::IApplication::RunMode& mode)
+void EffectsModule::onDelayedInit()
 {
-    m_effectsProvider->reloadEffects();
 }
 
-void EffectsModule::onDelayedInit()
+muse::modularity::IContextSetup* EffectsModule::newContext(const muse::modularity::ContextPtr& ctx) const
+{
+    return new EffectsContext(ctx);
+}
+
+// =====================================================
+// EffectsContext
+// =====================================================
+
+void EffectsContext::registerExports()
+{
+    m_effectsProvider = std::make_shared<EffectsProvider>(iocContext());
+    m_effectsMenuProvider = std::make_shared<EffectsMenuProvider>(iocContext());
+    m_actionsController = std::make_shared<EffectsActionsController>(iocContext());
+    m_realtimeEffectService = std::make_shared<RealtimeEffectService>(iocContext());
+
+    ioc()->registerExport<IEffectsProvider>(mname, m_effectsProvider);
+    ioc()->registerExport<IEffectsMenuProvider>(mname, m_effectsMenuProvider);
+    ioc()->registerExport<IEffectsUiEngine>(mname, std::make_shared<EffectsUiEngine>(iocContext()));
+    ioc()->registerExport<IEffectPresetsProvider>(mname, std::make_shared<EffectPresetsProvider>(iocContext()));
+    ioc()->registerExport<IEffectPresetsScenario>(mname, std::make_shared<EffectPresetsScenario>(iocContext()));
+    ioc()->registerExport<IEffectViewLaunchRegister>(mname, new EffectViewLaunchRegister());
+    ioc()->registerExport<IEffectParametersProvider>(mname, new EffectParametersProvider(iocContext()));
+    ioc()->registerExport<IEffectInstancesRegister>(mname, new EffectInstancesRegister(iocContext()));
+    ioc()->registerExport<IEffectExecutionScenario>(mname, std::make_shared<EffectExecutionScenario>(iocContext()));
+    ioc()->registerExport<IRealtimeEffectService>(mname, m_realtimeEffectService);
+}
+
+void EffectsContext::onInit(const muse::IApplication::RunMode&)
+{
+    m_effectsMenuProvider->init();
+    m_effectsProvider->init();
+    m_actionsController->init();
+    m_realtimeEffectService->init();
+}
+
+void EffectsContext::onAllInited(const muse::IApplication::RunMode&)
 {
     //! NOTE On init, built-in, vst and other plugins are initialized.
     //! After all, the provider can load effects of different types.
     m_effectsProvider->reloadEffects();
+}
+
+void EffectsContext::onDeinit()
+{
 }

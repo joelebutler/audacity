@@ -43,7 +43,7 @@ class AppShellConfiguration : public IAppShellConfiguration, public muse::Contex
     muse::GlobalInject<muse::IGlobalConfiguration> globalConfiguration;
     muse::GlobalInject<muse::io::IFileSystem> fileSystem;
     muse::GlobalInject<projectscene::IProjectSceneConfiguration> projectSceneConfiguration;
-    muse::Inject<muse::IApplication> application { this };
+    muse::GlobalInject<muse::IApplication> application;
 
 public:
     AppShellConfiguration(const muse::modularity::ContextPtr& iocCtx)

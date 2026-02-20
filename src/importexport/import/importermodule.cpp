@@ -10,21 +10,36 @@
 
 using namespace au::importexport;
 
+static const std::string mname("importer");
+
 ImporterModule::ImporterModule() {}
 
 std::string ImporterModule::moduleName() const
 {
-    return "importer";
+    return mname;
 }
 
-void ImporterModule::registerExports()
+muse::modularity::IContextSetup* ImporterModule::newContext(const muse::modularity::ContextPtr& ctx) const
+{
+    return new ImporterContext(ctx);
+}
+
+// =====================================================
+// ImporterContext
+// =====================================================
+
+void ImporterContext::registerExports()
 {
     m_importer = std::make_shared<Au3Importer>(iocContext());
 
-    ioc()->registerExport<IImporter>(moduleName(), m_importer);
+    ioc()->registerExport<IImporter>(mname, m_importer);
 }
 
-void ImporterModule::onInit(const muse::IApplication::RunMode&)
+void ImporterContext::onInit(const muse::IApplication::RunMode&)
 {
     m_importer->init();
+}
+
+void ImporterContext::onDeinit()
+{
 }

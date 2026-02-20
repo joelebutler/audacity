@@ -23,6 +23,8 @@
 using namespace muse;
 using namespace au::effects;
 
+static const std::string mname("effects_lv2");
+
 static void lv2_init_qrc()
 {
     Q_INIT_RESOURCE(lv2);
@@ -35,32 +37,26 @@ Lv2EffectsModule::Lv2EffectsModule()
 
 std::string Lv2EffectsModule::moduleName() const
 {
-    return "effects_lv2";
+    return mname;
 }
 
 void Lv2EffectsModule::registerExports()
 {
-    ioc()->registerExport<ILv2EffectsRepository>(moduleName(), std::make_shared<Lv2EffectsRepository>(iocContext()));
 }
 
 void Lv2EffectsModule::resolveImports()
 {
-    auto scannerRegister = ioc()->resolve<muse::audioplugins::IAudioPluginsScannerRegister>(moduleName());
+    auto scannerRegister = globalIoc()->resolve<muse::audioplugins::IAudioPluginsScannerRegister>(mname);
     if (scannerRegister) {
         scannerRegister->registerScanner(std::make_shared<Lv2PluginsScanner>());
     }
 
-    auto metaReaderRegister = ioc()->resolve<muse::audioplugins::IAudioPluginMetaReaderRegister>(moduleName());
+    auto metaReaderRegister = globalIoc()->resolve<muse::audioplugins::IAudioPluginMetaReaderRegister>(mname);
     if (metaReaderRegister) {
         metaReaderRegister->registerReader(m_metaReader);
     }
 
-    auto lr = ioc()->resolve<IEffectViewLaunchRegister>(moduleName());
-    if (lr) {
-        lr->regLauncher("LV2", std::make_shared<Lv2ViewLauncher>(iocContext()));
-    }
-
-    // auto ir = ioc()->resolve<IInteractiveUriRegister>(moduleName());
+    // auto ir = ioc()->resolve<IInteractiveUriRegister>(mname);
     // if (ir) {
     //     ir->registerQmlUri(Uri("audacity://effects/lv2_viewer"), "Audacity/Lv2/Lv2ViewerDialog.qml");
     // }
@@ -84,4 +80,30 @@ void Lv2EffectsModule::onInit(const muse::IApplication::RunMode& runMode)
 void Lv2EffectsModule::onDeinit()
 {
     m_metaReader->deinit();
+}
+
+muse::modularity::IContextSetup* Lv2EffectsModule::newContext(const muse::modularity::ContextPtr& ctx) const
+{
+    return new Lv2EffectsContext(ctx);
+}
+
+// =====================================================
+// Lv2EffectsContext
+// =====================================================
+
+void Lv2EffectsContext::registerExports()
+{
+    ioc()->registerExport<ILv2EffectsRepository>(mname, std::make_shared<Lv2EffectsRepository>(iocContext()));
+}
+
+void Lv2EffectsContext::resolveImports()
+{
+    auto lr = ioc()->resolve<IEffectViewLaunchRegister>(mname);
+    if (lr) {
+        lr->regLauncher("LV2", std::make_shared<Lv2ViewLauncher>(iocContext()));
+    }
+}
+
+void Lv2EffectsContext::onDeinit()
+{
 }

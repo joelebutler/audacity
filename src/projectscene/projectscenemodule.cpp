@@ -85,6 +85,8 @@ using namespace muse::modularity;
 using namespace muse::ui;
 using namespace muse::interactive;
 
+static const std::string mname("projectscene");
+
 static void projectscene_init_qrc()
 {
     Q_INIT_RESOURCE(projectscene);
@@ -92,7 +94,7 @@ static void projectscene_init_qrc()
 
 std::string ProjectSceneModule::moduleName() const
 {
-    return "projectscene";
+    return mname;
 }
 
 void ProjectSceneModule::registerResources()
@@ -102,24 +104,14 @@ void ProjectSceneModule::registerResources()
 
 void ProjectSceneModule::registerExports()
 {
-    m_projectSceneActionsController = std::make_shared<ProjectSceneActionsController>(iocContext());
-    m_uiActions = std::make_shared<ProjectSceneUiActions>(iocContext(), m_projectSceneActionsController);
-    m_configuration = std::make_shared<ProjectSceneConfiguration>(iocContext());
-    m_realtimeEffectPanelTrackSelection = std::make_shared<RealtimeEffectPanelTrackSelection>(iocContext());
+    m_configuration = std::make_shared<ProjectSceneConfiguration>(muse::modularity::globalCtx());
 
-    ioc()->registerExport<IProjectSceneConfiguration>(moduleName(), m_configuration);
-    ioc()->registerExport<IProjectViewStateCreator>(moduleName(), std::make_shared<ProjectViewStateCreator>(iocContext()));
-    ioc()->registerExport<IProjectSceneActionsController>(moduleName(), m_projectSceneActionsController);
-    ioc()->registerExport<IRealtimeEffectPanelTrackSelection>(moduleName(), m_realtimeEffectPanelTrackSelection);
-    ioc()->registerExport<IWavePainter>(moduleName(), std::make_shared<WavePainterProxy>(iocContext()));
-    ioc()->registerExport<IConnectingDotsPainter>(moduleName(), std::make_shared<ConnectingDotsPainter>(iocContext()));
-    ioc()->registerExport<IMinMaxRMSPainter>(moduleName(), std::make_shared<MinMaxRMSPainter>(iocContext()));
-    ioc()->registerExport<ISamplesPainter>(moduleName(), std::make_shared<SamplesPainter>(iocContext()));
+    globalIoc()->registerExport<IProjectSceneConfiguration>(mname, m_configuration);
 }
 
 void ProjectSceneModule::resolveImports()
 {
-    auto ir = ioc()->resolve<IInteractiveUriRegister>(moduleName());
+    auto ir = globalIoc()->resolve<IInteractiveUriRegister>(mname);
     if (ir) {
         ir->registerQmlUri(muse::Uri("audacity://projectscene/editpitchandspeed"),
                            "Audacity/ProjectScene/tracksitemsview/pitchandspeed/PitchAndSpeedChangeDialog.qml");
@@ -217,19 +209,54 @@ void ProjectSceneModule::registerUiTypes()
     qmlRegisterType<TrackRulerModel>("Audacity.ProjectScene", 1, 0, "TrackRulerModel");
 }
 
-void ProjectSceneModule::onInit(const muse::IApplication::RunMode& mode)
+void ProjectSceneModule::onInit(const muse::IApplication::RunMode&)
+{
+    m_configuration->init();
+}
+
+IContextSetup* ProjectSceneModule::newContext(const muse::modularity::ContextPtr& ctx) const
+{
+    return new ProjectSceneContext(ctx);
+}
+
+// =====================================================
+// ProjectSceneContext
+// =====================================================
+
+void ProjectSceneContext::registerExports()
+{
+    m_projectSceneActionsController = std::make_shared<ProjectSceneActionsController>(iocContext());
+    m_uiActions = std::make_shared<ProjectSceneUiActions>(iocContext(), m_projectSceneActionsController);
+    m_realtimeEffectPanelTrackSelection = std::make_shared<RealtimeEffectPanelTrackSelection>(iocContext());
+
+    ioc()->registerExport<IProjectViewStateCreator>(mname, std::make_shared<ProjectViewStateCreator>(iocContext()));
+    ioc()->registerExport<IProjectSceneActionsController>(mname, m_projectSceneActionsController);
+    ioc()->registerExport<IRealtimeEffectPanelTrackSelection>(mname, m_realtimeEffectPanelTrackSelection);
+    ioc()->registerExport<IWavePainter>(mname, std::make_shared<WavePainterProxy>(iocContext()));
+    ioc()->registerExport<IConnectingDotsPainter>(mname, std::make_shared<ConnectingDotsPainter>(iocContext()));
+    ioc()->registerExport<IMinMaxRMSPainter>(mname, std::make_shared<MinMaxRMSPainter>(iocContext()));
+    ioc()->registerExport<ISamplesPainter>(mname, std::make_shared<SamplesPainter>(iocContext()));
+}
+
+void ProjectSceneContext::resolveImports()
+{
+    auto ar = ioc()->resolve<muse::ui::IUiActionsRegister>(mname);
+    if (ar) {
+        ar->reg(m_uiActions);
+    }
+}
+
+void ProjectSceneContext::onInit(const muse::IApplication::RunMode& mode)
 {
     if (mode != muse::IApplication::RunMode::GuiApp) {
         return;
     }
 
-    m_configuration->init();
+    m_uiActions->init();
     m_projectSceneActionsController->init();
     m_realtimeEffectPanelTrackSelection->init();
+}
 
-    m_uiActions->init();
-    auto ar = ioc()->resolve<muse::ui::IUiActionsRegister>(moduleName());
-    if (ar) {
-        ar->reg(m_uiActions);
-    }
+void ProjectSceneContext::onDeinit()
+{
 }

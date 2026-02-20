@@ -58,9 +58,9 @@ class ApplicationActionController : public QObject, public IApplicationActionCon
     muse::Inject<appshell::IStartupScenario> startupScenario { this };
 
     muse::Inject<muse::IInteractive> interactive { this };
-    muse::Inject<muse::IApplication> application { this };
+    muse::GlobalInject<muse::IApplication> application;
     muse::GlobalInject<IAppShellConfiguration> configuration;
-    muse::GlobalInject<project::IProjectFilesController> projectFilesController;
+    muse::Inject<project::IProjectFilesController> projectFilesController { this };
     muse::Inject<record::IRecordController> recordController { this };
 
     muse::Inject<context::IUiContextResolver> uiContextResolver { this };

@@ -13,19 +13,29 @@ class SpectrogramService;
 class SpectrogramModule : public muse::modularity::IModuleSetup
 {
 public:
-    SpectrogramModule();
-    ~SpectrogramModule() override = default;
-
-public:
     std::string moduleName() const override;
     void registerResources() override;
     void registerExports() override;
     void registerUiTypes() override;
     void onInit(const muse::IApplication::RunMode&) override;
 
+    muse::modularity::IContextSetup* newContext(const muse::modularity::ContextPtr& ctx) const override;
+
 private:
-    const std::shared_ptr<Au3SpectrogramPainter> m_au3SpectrogramPainter;
-    const std::shared_ptr<GlobalSpectrogramConfiguration> m_configuration;
-    const std::shared_ptr<SpectrogramService> m_spectrogramService;
+    std::shared_ptr<GlobalSpectrogramConfiguration> m_configuration;
+};
+
+class SpectrogramContext : public muse::modularity::IContextSetup
+{
+public:
+    SpectrogramContext(const muse::modularity::ContextPtr& ctx)
+        : muse::modularity::IContextSetup(ctx) {}
+
+    void registerExports() override;
+    void onInit(const muse::IApplication::RunMode& mode) override;
+
+private:
+    std::shared_ptr<Au3SpectrogramPainter> m_au3SpectrogramPainter;
+    std::shared_ptr<SpectrogramService> m_spectrogramService;
 };
 }

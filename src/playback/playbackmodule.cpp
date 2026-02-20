@@ -27,6 +27,8 @@ using namespace muse::modularity;
 using namespace muse::ui;
 using namespace muse::actions;
 
+static const std::string mname("playback");
+
 static void playback_init_qrc()
 {
     Q_INIT_RESOURCE(playback);
@@ -34,33 +36,15 @@ static void playback_init_qrc()
 
 std::string PlaybackModule::moduleName() const
 {
-    return "playback";
+    return mname;
 }
 
 void PlaybackModule::registerExports()
 {
     m_configuration = std::make_shared<PlaybackConfiguration>();
-    m_controller = std::make_shared<PlaybackController>(iocContext());
-    m_uiActions = std::make_shared<PlaybackUiActions>(iocContext(), m_controller);
-    m_playback = std::make_shared<Au3Playback>(iocContext());
 
-    ioc()->registerExport<PlaybackConfiguration>(moduleName(), m_configuration);
-    ioc()->registerExport<IPlaybackController>(moduleName(), m_controller);
-    ioc()->registerExport<playback::IPlayback>(moduleName(), m_playback);
-    ioc()->registerExport<ITrackPlaybackControl>(moduleName(), std::make_shared<Au3TrackPlaybackControl>(iocContext()));
-    ioc()->registerExport<IPlaybackMeterController>(moduleName(), std::make_shared<PlaybackMeterController>());
-}
-
-void PlaybackModule::resolveImports()
-{
-    auto ar = ioc()->resolve<IUiActionsRegister>(moduleName());
-    if (ar) {
-        ar->reg(m_uiActions);
-    }
-    auto ir = ioc()->resolve<muse::interactive::IInteractiveUriRegister>(moduleName());
-    if (ir) {
-        ir->registerQmlUri(muse::Uri("audacity://playback/loop_region_in_out"), "Audacity/Playback/dialogs/LoopRegionInOut.qml");
-    }
+    globalIoc()->registerExport<PlaybackConfiguration>(mname, m_configuration);
+    globalIoc()->registerExport<IPlaybackMeterController>(mname, std::make_shared<PlaybackMeterController>());
 }
 
 void PlaybackModule::registerResources()
@@ -94,11 +78,55 @@ void PlaybackModule::onInit(const IApplication::RunMode& mode)
     }
 
     m_configuration->init();
+}
+
+IContextSetup* PlaybackModule::newContext(const muse::modularity::ContextPtr& ctx) const
+{
+    return new PlaybackContext(ctx);
+}
+
+// =====================================================
+// PlaybackContext
+// =====================================================
+
+void PlaybackContext::registerExports()
+{
+    m_controller = std::make_shared<PlaybackController>(iocContext());
+    m_uiActions = std::make_shared<PlaybackUiActions>(iocContext(), m_controller);
+    m_playback = std::make_shared<Au3Playback>(iocContext());
+
+    ioc()->registerExport<IPlaybackController>(mname, m_controller);
+    ioc()->registerExport<playback::IPlayback>(mname, m_playback);
+    ioc()->registerExport<ITrackPlaybackControl>(mname, std::make_shared<Au3TrackPlaybackControl>(iocContext()));
+}
+
+void PlaybackContext::resolveImports()
+{
+    auto ar = ioc()->resolve<IUiActionsRegister>(mname);
+    if (ar) {
+        ar->reg(m_uiActions);
+    }
+    auto ir = ioc()->resolve<muse::interactive::IInteractiveUriRegister>(mname);
+    if (ir) {
+        ir->registerQmlUri(muse::Uri("audacity://playback/loop_region_in_out"), "Audacity/Playback/dialogs/LoopRegionInOut.qml");
+    }
+}
+
+void PlaybackContext::onInit(const IApplication::RunMode& mode)
+{
+    if (mode == IApplication::RunMode::AudioPluginRegistration) {
+        return;
+    }
+
+    if (mode != IApplication::RunMode::GuiApp) {
+        return;
+    }
+
     m_uiActions->init();
     m_controller->init();
 }
 
-void PlaybackModule::onDeinit()
+void PlaybackContext::onDeinit()
 {
     m_controller->deinit();
 }

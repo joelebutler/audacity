@@ -14,9 +14,19 @@ public:
     ImporterModule();
 
     std::string moduleName() const override;
-    void registerExports() override;
 
+    muse::modularity::IContextSetup* newContext(const muse::modularity::ContextPtr& ctx) const override;
+};
+
+class ImporterContext : public muse::modularity::IContextSetup
+{
+public:
+    ImporterContext(const muse::modularity::ContextPtr& ctx)
+        : muse::modularity::IContextSetup(ctx) {}
+
+    void registerExports() override;
     void onInit(const muse::IApplication::RunMode& mode) override;
+    void onDeinit() override;
 
 private:
     std::shared_ptr<Au3Importer> m_importer;

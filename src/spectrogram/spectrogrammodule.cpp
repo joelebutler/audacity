@@ -22,16 +22,11 @@ static void spectrogram_init_qrc()
 }
 
 namespace au::spectrogram {
-SpectrogramModule::SpectrogramModule()
-    : m_au3SpectrogramPainter(std::make_shared<Au3SpectrogramPainter>(iocContext())),
-    m_configuration(std::make_shared<GlobalSpectrogramConfiguration>()),
-    m_spectrogramService(std::make_shared<SpectrogramService>(iocContext()))
-{
-}
+static const std::string mname("spectrogram");
 
 std::string SpectrogramModule::moduleName() const
 {
-    return "spectrogram";
+    return mname;
 }
 
 void SpectrogramModule::registerResources()
@@ -41,11 +36,9 @@ void SpectrogramModule::registerResources()
 
 void SpectrogramModule::registerExports()
 {
-    ioc()->registerExport<IGlobalSpectrogramConfiguration>(moduleName(), m_configuration);
-    ioc()->registerExport<ISpectrogramPainter>(moduleName(), m_au3SpectrogramPainter);
-    ioc()->registerExport<ISpectrogramService>(moduleName(), m_spectrogramService);
-    ioc()->registerExport<IPeakFinderFactory>(moduleName(), new Au3PeakFinderFactory(iocContext()));
-    ioc()->registerExport<IFrequencySelectionController>(moduleName(), new FrequencySelectionController(iocContext()));
+    m_configuration = std::make_shared<GlobalSpectrogramConfiguration>();
+
+    globalIoc()->registerExport<IGlobalSpectrogramConfiguration>(mname, m_configuration);
 }
 
 void SpectrogramModule::registerUiTypes()
@@ -67,8 +60,32 @@ void SpectrogramModule::registerUiTypes()
 
 void SpectrogramModule::onInit(const muse::IApplication::RunMode&)
 {
-    m_au3SpectrogramPainter->init();
     m_configuration->init();
+}
+
+muse::modularity::IContextSetup* SpectrogramModule::newContext(const muse::modularity::ContextPtr& ctx) const
+{
+    return new SpectrogramContext(ctx);
+}
+
+// =====================================================
+// SpectrogramContext
+// =====================================================
+
+void SpectrogramContext::registerExports()
+{
+    m_au3SpectrogramPainter = std::make_shared<Au3SpectrogramPainter>(iocContext());
+    m_spectrogramService = std::make_shared<SpectrogramService>(iocContext());
+
+    ioc()->registerExport<ISpectrogramPainter>(mname, m_au3SpectrogramPainter);
+    ioc()->registerExport<ISpectrogramService>(mname, m_spectrogramService);
+    ioc()->registerExport<IPeakFinderFactory>(mname, new Au3PeakFinderFactory(iocContext()));
+    ioc()->registerExport<IFrequencySelectionController>(mname, new FrequencySelectionController(iocContext()));
+}
+
+void SpectrogramContext::onInit(const muse::IApplication::RunMode&)
+{
+    m_au3SpectrogramPainter->init();
     m_spectrogramService->init();
 }
 }
