@@ -104,13 +104,39 @@ void RecordController::pause()
         return;
     }
 
-    Ret ret = record()->pause();
+    if (m_currentRecordStatus == RecordStatus::Paused) {
+        Ret ret = record()->resume();
+        if (!ret) {
+            interactive()->error(muse::trc("record", "Recording error"), ret.text());
+            return;
+        }
+
+        setCurrentRecordStatus(RecordStatus::Running);
+    } else {
+        Ret ret = record()->pause();
+        if (!ret) {
+            interactive()->error(muse::trc("record", "Recording error"), ret.text());
+            return;
+        }
+
+        setCurrentRecordStatus(RecordStatus::Paused);
+    }
+}
+
+
+void RecordController::resume()
+{
+    IF_ASSERT_FAILED(record()) {
+        return;
+    }
+
+    Ret ret = record()->resume();
     if (!ret) {
         interactive()->error(muse::trc("record", "Recording error"), ret.text());
         return;
     }
 
-    setCurrentRecordStatus(RecordStatus::Paused);
+    setCurrentRecordStatus(RecordStatus::Running);
 }
 
 void RecordController::stop()

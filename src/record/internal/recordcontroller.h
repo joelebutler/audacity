@@ -65,6 +65,7 @@ private:
     void toggleRecord();
     void start();
     void pause();
+    void resume();
     void stop();
     void toggleMicMetering();
     void toggleInputMonitoring();

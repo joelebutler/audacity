@@ -22,6 +22,7 @@ public:
 
     virtual muse::Ret start() = 0;
     virtual muse::Ret pause() = 0;
+    virtual muse::Ret resume() = 0;
     virtual muse::Ret stop() = 0;
 
     virtual IAudioInputPtr audioInput() const = 0;
